@@ -6,6 +6,8 @@ The VPC will contain 1 public subnet, and a selectable number of private subnets
 subnet will have a route table that provides 0.0.0.0/0 access via the Internet Gateway, and the private subnets
 will share a second route table that privates 0.0.0.0/0 access via the NAT Gateway.
 
+Each of the private subnets have 4091 IP addresses available.
+
 
 ## Arguments
 
@@ -21,6 +23,8 @@ will share a second route table that privates 0.0.0.0/0 access via the NAT Gatew
 ## Outputs
 
 The reference to the VPC and its full CIDR block are returned, to facilitate subsequent VPC Peering.
+
+The list of private subnets is also returned.
 
 ## Licence
 

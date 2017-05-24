@@ -516,6 +516,85 @@
                     ] 
                 ]
             }
+        },
+        "PrivateSubnets" : {
+            "Description" : "List of private subnets",
+            "Value" : {
+                "Fn::If" : [ 
+                    "CreateSubnet6", 
+                    {
+                        "Fn::Join" : [ ",",
+                            [
+                                { "Ref" : "PrivateSubnet1" },
+                                { "Ref" : "PrivateSubnet2" },
+                                { "Ref" : "PrivateSubnet3" },
+                                { "Ref" : "PrivateSubnet4" },
+                                { "Ref" : "PrivateSubnet5" },
+                                { "Ref" : "PrivateSubnet6" }
+                            ]
+                        ]
+                    },
+                    {
+                        "Fn::If" : [ 
+                            "CreateSubnet5", 
+                            {
+                                "Fn::Join" : [ ",",
+                                    [
+                                        { "Ref" : "PrivateSubnet1" },
+                                        { "Ref" : "PrivateSubnet2" },
+                                        { "Ref" : "PrivateSubnet3" },
+                                        { "Ref" : "PrivateSubnet4" },
+                                        { "Ref" : "PrivateSubnet5" }
+                                    ]
+                                ]
+                            },
+                            {
+                                "Fn::If" : [ 
+                                    "CreateSubnet4", 
+                                    {
+                                        "Fn::Join" : [ ",",
+                                            [
+                                                { "Ref" : "PrivateSubnet1" },
+                                                { "Ref" : "PrivateSubnet2" },
+                                                { "Ref" : "PrivateSubnet3" },
+                                                { "Ref" : "PrivateSubnet4" }
+                                            ]
+                                        ]
+                                    },
+                                    {
+                                        "Fn::If" : [ 
+                                            "CreateSubnet3", 
+                                            {
+                                                "Fn::Join" : [ ",",
+                                                    [
+                                                        { "Ref" : "PrivateSubnet1" },
+                                                        { "Ref" : "PrivateSubnet2" },
+                                                        { "Ref" : "PrivateSubnet3" }
+                                                    ]
+                                                ]
+                                            },
+                                            {
+                                                "Fn::If" : [ 
+                                                    "CreateSubnet2", 
+                                                    {
+                                                        "Fn::Join" : [ ",",
+                                                            [
+                                                                { "Ref" : "PrivateSubnet1" },
+                                                                { "Ref" : "PrivateSubnet2" }
+                                                            ]
+                                                        ]
+                                                    },
+                                                    { "Ref" : "PrivateSubnet1" }
+                                                ]
+                                            }                                    
+                                        ]
+                                    }                                    
+                                ]
+                            }
+                        ]
+                    }
+                ]                
+            }
         }
     }
 }
