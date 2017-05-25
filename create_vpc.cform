@@ -11,6 +11,12 @@
             "AllowedPattern" : "[0-9]?[0-9]?[0-9]\\.[0-9]?[0-9]?[0-9]",
             "ConstraintDescription" : "Must create a valid CIDR"
         },
+        "CreatePublicSubnet" : {
+            "Default" : "false",
+            "Description" : "Whether a public (internet facing) subnet should be created",
+            "Type" : "String",
+            "AllowedValues" : ["true", "false"]
+        },
         "EnableDnsHostnames" : {
             "Default" : "false",
             "Description" : "Whether or not DNS hostnames will be created",
@@ -43,6 +49,7 @@
         "4SubnetsRequested" : { "Fn::Equals" : [ { "Ref" : "PrivateSubnetCount" }, "4" ] },
         "5SubnetsRequested" : { "Fn::Equals" : [ { "Ref" : "PrivateSubnetCount" }, "5" ] },
         "6SubnetsRequested" : { "Fn::Equals" : [ { "Ref" : "PrivateSubnetCount" }, "6" ] },
+        "CreatePublicSubnetAndGateway" : { "Fn::Equals" : [ { "Ref" : "CreatePublicSubnet" }, "true" ] },
         "CreateSubnet2" : { "Fn::Or" : [ 
             { "Condition" : "2SubnetsRequested" },
             { "Condition" : "3SubnetsRequested" },
@@ -94,10 +101,12 @@
             }
         },
         "InternetGateway" : {
-            "Type": "AWS::EC2::InternetGateway"
+            "Type": "AWS::EC2::InternetGateway",
+            "Condition" : "CreatePublicSubnetAndGateway"
         },
         "AttachInternetGatewayToVPC" : {
             "Type": "AWS::EC2::VPCGatewayAttachment",
+            "Condition" : "CreatePublicSubnetAndGateway",
             "Properties": {
                 "VpcId" : { "Ref" : "VPC" },
                 "InternetGatewayId" : { "Ref" : "InternetGateway" }
@@ -105,6 +114,7 @@
         },
         "PublicSubnet": {
             "Type": "AWS::EC2::Subnet",
+            "Condition" : "CreatePublicSubnetAndGateway",
             "Properties": {
                 "AvailabilityZone": { "Fn::Select" : [ "0", { "Fn::GetAZs" : { "Ref" : "AWS::Region" } } ] },
                 "CidrBlock": {
@@ -132,6 +142,7 @@
         },
         "PublicSubnetRouteTable": {
             "Type": "AWS::EC2::RouteTable",
+            "Condition" : "CreatePublicSubnetAndGateway",
             "Properties": {
                 "Tags": [
                     {
@@ -150,6 +161,7 @@
         },
         "PublicSubnetRouteTableAssociation": {
             "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Condition" : "CreatePublicSubnetAndGateway",
             "Properties": {
                 "RouteTableId": { "Ref": "PublicSubnetRouteTable" },
                 "SubnetId": { "Ref": "PublicSubnet" }
@@ -157,6 +169,7 @@
         },
         "PublicSubnetRouteToInternet" : {
             "Type": "AWS::EC2::Route",
+            "Condition" : "CreatePublicSubnetAndGateway",
             "Properties" : {
                 "RouteTableId" : { "Ref" : "PublicSubnetRouteTable" },
                 "DestinationCidrBlock" : "0.0.0.0/0",
@@ -165,12 +178,14 @@
         },
         "NATEIP" : {
             "Type" : "AWS::EC2::EIP",
+            "Condition" : "CreatePublicSubnetAndGateway",
             "Properties" : {
                 "Domain" : "vpc"
             }
         },
         "NAT" : {
             "Type" : "AWS::EC2::NatGateway",
+            "Condition" : "CreatePublicSubnetAndGateway",
             "Properties" : {
                 "AllocationId" : { "Fn::GetAtt" : [ "NATEIP", "AllocationId" ] },
                 "SubnetId" : { "Ref": "PublicSubnet" }
@@ -196,6 +211,7 @@
         },
         "PrivateSubnetRouteToInternet" : {
             "Type": "AWS::EC2::Route",
+            "Condition" : "CreatePublicSubnetAndGateway",
             "Properties" : {
                 "RouteTableId" : { "Ref" : "PrivateSubnetRouteTable" },
                 "DestinationCidrBlock" : "0.0.0.0/0",
@@ -502,6 +518,26 @@
         }
     },
     "Outputs" : {
+        "PublicSubnet" : {
+            "Description" : "The public subnet in the VPC",
+            "Value" : {
+                "Fn::If" : [
+                    "CreatePublicSubnetAndGateway",
+                    { "Ref" : "PublicSubnet" },
+                    ""
+                ]
+            }
+        },
+        "PublicSubnetRouteTable" : {
+            "Description" : "The route table of the public subnet in the VPC",
+            "Value" : {
+                "Fn::If" : [
+                    "CreatePublicSubnetAndGateway",
+                    { "Ref" : "PublicSubnetRouteTable" },
+                    ""
+                ]
+            }
+        },
     	"VPC" : {
     		"Description" : "Reference to the VPC",
     		"Value" : { "Ref" : "VPC" }
