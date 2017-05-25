@@ -39,17 +39,26 @@
             "Default" : "1",
             "Description" : "Number of private subnets to create in the VPC",
             "Type" : "Number",
-            "AllowedValues" : ["1","2","3","4","5","6"],
-            "ConstraintDescription" : "Must be between 2 and 6"
+            "AllowedValues" : ["0","1","2","3","4","5","6"],
+            "ConstraintDescription" : "Must be between 0 and 6"
         }        
 	},
     "Conditions" : {
+        "1SubnetRequested" : { "Fn::Equals" : [ { "Ref" : "PrivateSubnetCount" }, "1" ] },
         "2SubnetsRequested" : { "Fn::Equals" : [ { "Ref" : "PrivateSubnetCount" }, "2" ] },
         "3SubnetsRequested" : { "Fn::Equals" : [ { "Ref" : "PrivateSubnetCount" }, "3" ] },
         "4SubnetsRequested" : { "Fn::Equals" : [ { "Ref" : "PrivateSubnetCount" }, "4" ] },
         "5SubnetsRequested" : { "Fn::Equals" : [ { "Ref" : "PrivateSubnetCount" }, "5" ] },
         "6SubnetsRequested" : { "Fn::Equals" : [ { "Ref" : "PrivateSubnetCount" }, "6" ] },
         "CreatePublicSubnetAndGateway" : { "Fn::Equals" : [ { "Ref" : "CreatePublicSubnet" }, "true" ] },
+        "CreateSubnet1" : { "Fn::Or" : [ 
+            { "Condition" : "1SubnetRequested" },
+            { "Condition" : "2SubnetsRequested" },
+            { "Condition" : "3SubnetsRequested" },
+            { "Condition" : "4SubnetsRequested" },
+            { "Condition" : "5SubnetsRequested" },
+            { "Condition" : "6SubnetsRequested" }
+         ] },
         "CreateSubnet2" : { "Fn::Or" : [ 
             { "Condition" : "2SubnetsRequested" },
             { "Condition" : "3SubnetsRequested" },
@@ -75,7 +84,19 @@
         "CreateSubnet6" : { "Fn::Or" : [ 
             { "Condition" : "6SubnetsRequested" },
             { "Condition" : "6SubnetsRequested" }
-         ] }
+         ] },
+         "CreatePrivateSubnet" :  { "Fn::Or" : [
+            { "Condition" : "CreateSubnet1" },
+            { "Condition" : "CreateSubnet2" },
+            { "Condition" : "CreateSubnet3" },
+            { "Condition" : "CreateSubnet4" },
+            { "Condition" : "CreateSubnet5" },
+            { "Condition" : "CreateSubnet6" }
+        ] },
+        "CreateBothPublicAndPrivate" : { "Fn::And" : [
+            { "Condition" : "CreatePublicSubnetAndGateway" },
+            { "Condition" : "CreatePrivateSubnet" }
+        ] }
     },
 	"Resources" : {
         "VPC": {
@@ -178,14 +199,14 @@
         },
         "NATEIP" : {
             "Type" : "AWS::EC2::EIP",
-            "Condition" : "CreatePublicSubnetAndGateway",
+            "Condition" : "CreateBothPublicAndPrivate",
             "Properties" : {
                 "Domain" : "vpc"
             }
         },
         "NAT" : {
             "Type" : "AWS::EC2::NatGateway",
-            "Condition" : "CreatePublicSubnetAndGateway",
+            "Condition" : "CreateBothPublicAndPrivate",
             "Properties" : {
                 "AllocationId" : { "Fn::GetAtt" : [ "NATEIP", "AllocationId" ] },
                 "SubnetId" : { "Ref": "PublicSubnet" }
@@ -193,6 +214,7 @@
         },
         "PrivateSubnetRouteTable": {
             "Type": "AWS::EC2::RouteTable",
+            "Condition" : "CreatePrivateSubnet",
             "Properties": {
                 "Tags": [
                     {
@@ -211,7 +233,7 @@
         },
         "PrivateSubnetRouteToInternet" : {
             "Type": "AWS::EC2::Route",
-            "Condition" : "CreatePublicSubnetAndGateway",
+            "Condition" : "CreateBothPublicAndPrivate",
             "Properties" : {
                 "RouteTableId" : { "Ref" : "PrivateSubnetRouteTable" },
                 "DestinationCidrBlock" : "0.0.0.0/0",
@@ -220,6 +242,7 @@
         },
         "PrivateSubnet1": {
             "Type": "AWS::EC2::Subnet",
+            "Condition" : "CreateSubnet1",
             "Properties": {
                 "AvailabilityZone": { 
                     "Fn::Select" : [ "0", 
@@ -261,6 +284,7 @@
         },
         "PrivateSubnet1RouteTableAssociation": {
             "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Condition" : "CreateSubnet1",
             "Properties": {
                 "RouteTableId": { "Ref": "PrivateSubnetRouteTable" },
                 "SubnetId": { "Ref": "PrivateSubnet1" }
@@ -553,6 +577,16 @@
                 ]
             }
         },
+        "PrivateSubnetRouteTable" : {
+            "Description" : "The route table of the private subnets in the VPC",
+            "Value" : {
+                "Fn::If" : [
+                    "CreatePrivateSubnet",
+                    { "Ref" : "PrivateSubnetRouteTable" },
+                    ""
+                ]
+            }
+        },
         "PrivateSubnets" : {
             "Description" : "List of private subnets",
             "Value" : {
@@ -620,7 +654,13 @@
                                                             ]
                                                         ]
                                                     },
-                                                    { "Ref" : "PrivateSubnet1" }
+                                                    {
+                                                        "Fn::If" : [
+                                                            "CreateSubnet1",
+                                                            { "Ref" : "PrivateSubnet1" },
+                                                            ""
+                                                        ]
+                                                    }
                                                 ]
                                             }                                    
                                         ]

@@ -2,29 +2,40 @@
 
 AWS CloudFormation script that creates a VPC, Internet Gateway and NAT Gateway.
 
-The VPC will contain 1 public subnet, and a selectable number of private subnets (1 - 6).  The public
-subnet will have a route table that provides 0.0.0.0/0 access via the Internet Gateway, and the private subnets
-will share a second route table that privates 0.0.0.0/0 access via the NAT Gateway.
+The VPC may contain a public subnet, and/or a selectable number of private subnets (0-6).
 
-Each of the private subnets have 4091 IP addresses available.
+If created, the public subnet will have a route table that provides 0.0.0.0/0 access via the Internet 
+Gateway, and any private subnets created will then share a second route table that provides 0.0.0.0/0 
+access via the NAT Gateway.
 
+The public subnet has 250 IP addresses available, while each private subnet has 4091 IP addresses available.
 
 ## Arguments
 
 | Argument           | Description                                                        |
 | ------------------ |:------------------------------------------------------------------:|
 | CidrAddress        | First 2 elements of CIDR block, which is extended to be X.Y.0.0/16 |
+| CreatePublicSubnet | Whether a public subnet should be created (with IG & NAT)          |
 | EnableDnsHostnames | Whether EC2 instances will have DNS hostnames applied              |
 | EnableDnsSupport   | Whether or not DNS is supported                                    |
 | InstanceTenancy    | Type of EC2 instance tenancy                                       |
-| PrivateSubnetCount | The number of private subnets to be created (1-6 can be selected)  |
+| PrivateSubnetCount | The number of private subnets to be created (0-6 can be selected)  |
 
 
 ## Outputs
 
-The reference to the VPC and its full CIDR block are returned, to facilitate subsequent VPC Peering.
+| Output                  | Description                                                 |
+| ----------------------- |:-----------------------------------------------------------:|
+| CidrBlock               | The full CIDR block of the VPC                              |
+| PrivateSubnetRouteTable | The route table associated with each of the private subnets |
+| PrivateSubnets          | The list of private subnets (if any created)                |
+| PublicSubnetRouteTable  | The route table associated with the public subnet           |
+| PublicSubnet            | The public subnet                                           |
+| VPC                     | The reference to the VPC                                    |
 
-The list of private subnets is also returned.
+The route tables and VPC are returned to allow subsequent VPC Peering.
+
+The subnets are returned to allow flow logs to be attached, and for use in Autoscaling Groups and Lambda VPC associations.
 
 ## Licence
 
