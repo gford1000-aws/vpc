@@ -24,7 +24,7 @@
             "AllowedValues" : ["true", "false"]
         },
         "EnableDnsSupport" : {
-            "Default" : "false",
+            "Default" : "true",
             "Description" : "Whether or not DNS is supported",
             "Type" : "String",
             "AllowedValues" : ["true", "false"]
@@ -41,9 +41,20 @@
             "Type" : "Number",
             "AllowedValues" : ["0","1","2","3","4","5","6"],
             "ConstraintDescription" : "Must be between 0 and 6"
-        }        
+        },
+        "VPCName" : {
+            "Default" : "",
+            "Description" : "Optional name to assign to the 'Name' tag of the VPC - if omitted then the StackName is used",
+            "Type" : "String"
+        },
+        "VPCRole" : {
+            "Default" : "",
+            "Description" : "Optional role to assigned to the 'Role' tag of the VPC - if omitted then '' is used",
+            "Type" : "String"
+        }
 	},
     "Conditions" : {
+        "VPCNameNotProvided" : { "Fn::Equals" : [ { "Ref" : "VPCName" }, "" ] },
         "1SubnetRequested" : { "Fn::Equals" : [ { "Ref" : "PrivateSubnetCount" }, "1" ] },
         "2SubnetsRequested" : { "Fn::Equals" : [ { "Ref" : "PrivateSubnetCount" }, "2" ] },
         "3SubnetsRequested" : { "Fn::Equals" : [ { "Ref" : "PrivateSubnetCount" }, "3" ] },
@@ -116,7 +127,17 @@
                 "Tags": [
                     {
                         "Key": "Name",
-                        "Value": { "Ref": "AWS::StackName" }
+                        "Value": { 
+                            "Fn::If" : [
+                                "VPCNameNotProvided",
+                                { "Ref": "AWS::StackName" },
+                                { "Ref" : "VPCName" }
+                            ]
+                        }
+                    },
+                    {
+                        "Key": "Role",
+                        "Value": { "Ref": "VPCRole" }
                     }
                 ]
             }
@@ -149,7 +170,13 @@
                 "Tags": [
                     {
                         "Key": "Name",
-                        "Value": { "Ref": "AWS::StackName" }
+                        "Value": { 
+                            "Fn::If" : [
+                                "VPCNameNotProvided",
+                                { "Ref": "AWS::StackName" },
+                                { "Ref" : "VPCName" }
+                            ]
+                        }
                     },
                     {
                         "Key": "Subnet Type",
@@ -168,7 +195,19 @@
                 "Tags": [
                     {
                         "Key": "Name",
-                        "Value": { "Ref": "AWS::StackName" }
+                        "Value": {
+                            "Fn::Sub" : [ 
+                                "${Name}-Public", {
+                                    "Name" : {
+                                        "Fn::If" : [
+                                            "VPCNameNotProvided",
+                                            { "Ref": "AWS::StackName" },
+                                            { "Ref" : "VPCName" }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
                     },
                     {
                         "Key": "Subnet Type",
@@ -219,7 +258,19 @@
                 "Tags": [
                     {
                         "Key": "Name",
-                        "Value": { "Ref": "AWS::StackName" }
+                        "Value": {
+                            "Fn::Sub" : [ 
+                                "${Name}-Private", {
+                                    "Name" : {
+                                        "Fn::If" : [
+                                            "VPCNameNotProvided",
+                                            { "Ref": "AWS::StackName" },
+                                            { "Ref" : "VPCName" }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
                     },
                     {
                         "Key": "Subnet Type",
@@ -270,7 +321,19 @@
                 "Tags": [
                     {
                         "Key": "Name",
-                        "Value": { "Ref": "AWS::StackName" }
+                        "Value": {
+                            "Fn::Sub" : [ 
+                                "${Name}-Private-1", {
+                                    "Name" : {
+                                        "Fn::If" : [
+                                            "VPCNameNotProvided",
+                                            { "Ref": "AWS::StackName" },
+                                            { "Ref" : "VPCName" }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
                     },
                     {
                         "Key": "Subnet Type",
@@ -320,7 +383,19 @@
                 "Tags": [
                     {
                         "Key": "Name",
-                        "Value": { "Ref": "AWS::StackName" }
+                        "Value": {
+                            "Fn::Sub" : [ 
+                                "${Name}-Private-2", {
+                                    "Name" : {
+                                        "Fn::If" : [
+                                            "VPCNameNotProvided",
+                                            { "Ref": "AWS::StackName" },
+                                            { "Ref" : "VPCName" }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
                     },
                     {
                         "Key": "Subnet Type",
@@ -370,7 +445,19 @@
                 "Tags": [
                     {
                         "Key": "Name",
-                        "Value": { "Ref": "AWS::StackName" }
+                        "Value": {
+                            "Fn::Sub" : [ 
+                                "${Name}-Private-3", {
+                                    "Name" : {
+                                        "Fn::If" : [
+                                            "VPCNameNotProvided",
+                                            { "Ref": "AWS::StackName" },
+                                            { "Ref" : "VPCName" }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
                     },
                     {
                         "Key": "Subnet Type",
@@ -420,7 +507,19 @@
                 "Tags": [
                     {
                         "Key": "Name",
-                        "Value": { "Ref": "AWS::StackName" }
+                        "Value": {
+                            "Fn::Sub" : [ 
+                                "${Name}-Private-4", {
+                                    "Name" : {
+                                        "Fn::If" : [
+                                            "VPCNameNotProvided",
+                                            { "Ref": "AWS::StackName" },
+                                            { "Ref" : "VPCName" }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
                     },
                     {
                         "Key": "Subnet Type",
@@ -470,7 +569,19 @@
                 "Tags": [
                     {
                         "Key": "Name",
-                        "Value": { "Ref": "AWS::StackName" }
+                        "Value": {
+                            "Fn::Sub" : [ 
+                                "${Name}-Private-5", {
+                                    "Name" : {
+                                        "Fn::If" : [
+                                            "VPCNameNotProvided",
+                                            { "Ref": "AWS::StackName" },
+                                            { "Ref" : "VPCName" }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
                     },
                     {
                         "Key": "Subnet Type",
@@ -520,7 +631,19 @@
                 "Tags": [
                     {
                         "Key": "Name",
-                        "Value": { "Ref": "AWS::StackName" }
+                        "Value": {
+                            "Fn::Sub" : [ 
+                                "${Name}-Private-6", {
+                                    "Name" : {
+                                        "Fn::If" : [
+                                            "VPCNameNotProvided",
+                                            { "Ref": "AWS::StackName" },
+                                            { "Ref" : "VPCName" }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
                     },
                     {
                         "Key": "Subnet Type",
