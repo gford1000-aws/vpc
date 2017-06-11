@@ -2,13 +2,13 @@
 
 AWS CloudFormation script that creates a VPC, Internet Gateway and NAT Gateway.
 
-The VPC may contain a public subnet, and/or a selectable number of private subnets (0-6).
+The VPC may contain 3 public subnets, and/or a selectable number of private subnets (0-6).
 
-If created, the public subnet will have a route table that provides 0.0.0.0/0 access via the Internet 
+If created, the public subnets will have a route table that provides 0.0.0.0/0 access via the Internet 
 Gateway, and any private subnets created will then share a second route table that provides 0.0.0.0/0 
 access via the NAT Gateway.
 
-The public subnet has 250 IP addresses available, while each private subnet has 4091 IP addresses available.
+Each public subnet has 58 IP addresses available, while each private subnet has 4091 IP addresses available.
 
 ## Arguments
 
@@ -30,7 +30,7 @@ The public subnet has 250 IP addresses available, while each private subnet has 
 | PrivateSubnetRouteTable | The route table associated with each of the private subnets |
 | PrivateSubnets          | The list of private subnets (if any created)                |
 | PublicSubnetRouteTable  | The route table associated with the public subnet           |
-| PublicSubnet            | The public subnet                                           |
+| PublicSubnets           | The public subnets                                          |
 | VPC                     | The reference to the VPC                                    |
 
 The route tables and VPC are returned to allow subsequent VPC Peering.
