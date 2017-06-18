@@ -12,6 +12,10 @@ the relevant route table such that the public/private subnets are in the same Av
 
 Each public subnet has 58 IP addresses available, while each private subnet has 4091 IP addresses available.
 
+By default, Flow Logs are disabled, but these can be enabled selectively for the VPC, the public subnets, the
+private subnets or all resources.
+
+
 ## Arguments
 
 | Argument            | Description                                                        |
@@ -20,6 +24,10 @@ Each public subnet has 58 IP addresses available, while each private subnet has 
 | CreatePublicSubnet  | Whether a public subnet should be created (with IG & NAT)          |
 | EnableDnsHostnames  | Whether EC2 instances will have DNS hostnames applied              |
 | EnableDnsSupport    | Whether or not DNS is supported                                    |
+| EnableFlowLogs      | Whether or not Flow Logs should be created                         |
+| FlowLogCoverage     | If enabled, to which resources Flow Logs should be attached        |
+| FlowLogRetention    | If enabled, the retention period for the Flow Logs                 |
+| FlowLogTrafficType  | If enabled, the type of traffic to be logged in the Flow Logs      |
 | InstanceTenancy     | Type of EC2 instance tenancy                                       |
 | MultipleNATGateways | If true, then 3 NAT Gateways are created                           |
 | PrivateSubnetCount  | The number of private subnets to be created (0-6 can be selected)  |

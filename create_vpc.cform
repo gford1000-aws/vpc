@@ -29,6 +29,30 @@
             "Type" : "String",
             "AllowedValues" : ["true", "false"]
         },
+        "EnableFlowLogs" : {
+            "Default" : "false",
+            "Description" : "Whether or not FlowLogs should be created",
+            "Type" : "String",
+            "AllowedValues" : ["true", "false"]
+        },
+        "FlowLogCoverage" : {
+            "Description" : "If using FlowLogs, which resources should be covered",
+            "Default" : "ALL",
+            "Type" : "String",
+            "AllowedValues" : ["ALL", "VPC", "VPC+PublicSubnet", "VPC+PrivateSubnet" ]
+        },
+        "FlowLogRetention" : {
+            "Description" : "If using FlowLogs, the number of days to retain logs",
+            "Default" : "30",
+            "Type" : "Number",
+            "AllowedValues" : ["1", "3", "5", "7", "14", "30", "60", "90", "120", "150", "180", "365", "400", "545", "731", "1827", "3653"]
+        },
+        "FlowLogTrafficType" : {
+            "Description" : "If using FlowLogs, the type of traffic to log",
+            "Default" : "ALL",
+            "Type" : "String",
+            "AllowedValues" : ["ACCEPT", "REJECT", "ALL"]
+        },
         "InstanceTenancy" : {
             "Default" : "default",
             "Description" : "Type of instance tenancy",
@@ -67,6 +91,10 @@
         "4SubnetsRequested" : { "Fn::Equals" : [ { "Ref" : "PrivateSubnetCount" }, "4" ] },
         "5SubnetsRequested" : { "Fn::Equals" : [ { "Ref" : "PrivateSubnetCount" }, "5" ] },
         "6SubnetsRequested" : { "Fn::Equals" : [ { "Ref" : "PrivateSubnetCount" }, "6" ] },
+        "CreateFlowLogs" : { "Fn::Equals" : [ { "Ref" : "EnableFlowLogs" }, "true" ] },
+        "CreateAllFlowLogs" : { "Fn::Equals" : [ { "Ref" : "FlowLogCoverage" }, "ALL" ] },
+        "CreatePublicSubnetFlowLog" : { "Fn::Equals" : [ { "Ref" : "FlowLogCoverage" }, "VPC+PublicSubnet" ] },
+        "CreatePrivateSubnetFlowLog" : { "Fn::Equals" : [ { "Ref" : "FlowLogCoverage" }, "VPC+PrivateSubnet" ] },
         "CreateSingleNATGateway" : { "Fn::Equals" : [ { "Ref" : "MultipleNATGateways" }, "false" ] },
         "CreateMultipleNATGateways" : { "Fn::Equals" : [ { "Ref" : "MultipleNATGateways" }, "true" ] },
         "CreatePublicSubnet" : { "Fn::Equals" : [ { "Ref" : "CreatePublicSubnet" }, "true" ] },
@@ -121,6 +149,50 @@
             { "Condition" : "CreatePublicSubnet" },
             { "Condition" : "CreatePrivateSubnet" },
             { "Condition" : "CreateMultipleNATGateways" }
+        ] },
+        "CreatePublicFlowLogs" : { "Fn::And" : [
+            { "Condition" : "CreateFlowLogs" },
+            { "Condition" : "CreatePublicSubnet" },
+            {
+                "Fn::Or" : [
+                    { "Condition" : "CreateAllFlowLogs" },
+                    { "Condition" : "CreatePublicSubnetFlowLog" }
+                ]
+            }
+        ] },
+        "CreatePrivateFlowLogs" : { "Fn::And" : [
+            { "Condition" : "CreateFlowLogs" },
+            { "Condition" : "CreatePrivateSubnet" },
+            {
+                "Fn::Or" : [
+                    { "Condition" : "CreateAllFlowLogs" },
+                    { "Condition" : "CreatePrivateSubnetFlowLog" }
+                ]
+            }
+        ] },
+        "CreatePrivateSubnet1FlowLog" : { "Fn::And" : [
+            { "Condition" : "CreatePrivateFlowLogs" },
+            { "Condition" : "CreateSubnet1" }
+        ] },
+        "CreatePrivateSubnet2FlowLog" : { "Fn::And" : [
+            { "Condition" : "CreatePrivateFlowLogs" },
+            { "Condition" : "CreateSubnet2" }
+        ] },
+        "CreatePrivateSubnet3FlowLog" : { "Fn::And" : [
+            { "Condition" : "CreatePrivateFlowLogs" },
+            { "Condition" : "CreateSubnet3" }
+        ] },
+        "CreatePrivateSubnet4FlowLog" : { "Fn::And" : [
+            { "Condition" : "CreatePrivateFlowLogs" },
+            { "Condition" : "CreateSubnet4" }
+        ] },
+        "CreatePrivateSubnet5FlowLog" : { "Fn::And" : [
+            { "Condition" : "CreatePrivateFlowLogs" },
+            { "Condition" : "CreateSubnet5" }
+        ] },
+        "CreatePrivateSubnet6FlowLog" : { "Fn::And" : [
+            { "Condition" : "CreatePrivateFlowLogs" },
+            { "Condition" : "CreateSubnet6" }
         ] },
         "AttachSubnet1ToSinglePrivateRouteTable" : { "Fn::And" : [
             { "Condition" : "CreateSubnet1" },
@@ -204,6 +276,63 @@
                 ]
             }
         },
+        "FlowLogRole": {
+            "Type": "AWS::IAM::Role",
+            "Condition" : "CreateFlowLogs",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "ec2.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "root",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": "arn:aws:logs:*:*:*",
+                                    "Effect": "Allow"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "VPCLogGroup" : {
+            "Type" : "AWS::Logs::LogGroup",
+            "Condition" : "CreateFlowLogs",
+            "Properties" : {
+                "LogGroupName" : { "Fn::Sub" : [ "VPC-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
+                "RetentionInDays" : { "Ref" : "FlowLogRetention" }
+            }
+        },
+        "VPCFlowLog" : {
+            "Type" : "AWS::EC2::FlowLog",
+            "Condition" : "CreateFlowLogs",
+            "Properties" : {
+                "DeliverLogsPermissionArn" : { "Fn::GetAtt": [ "FlowLogRole", "Arn" ] },
+                "LogGroupName" : { "Ref" : "VPCLogGroup" },
+                "ResourceId" : { "Ref" : "VPC" },
+                "ResourceType" : "VPC",
+                "TrafficType" : { "Ref" : "FlowLogTrafficType" }            
+            }
+        },
         "InternetGateway" : {
             "Type": "AWS::EC2::InternetGateway",
             "Condition" : "CreatePublicSubnet"
@@ -269,6 +398,25 @@
                 }
             }
         },
+        "PublicSubnet1LogGroup" : {
+            "Type" : "AWS::Logs::LogGroup",
+            "Condition" : "CreatePublicFlowLogs",
+            "Properties" : {
+                "LogGroupName" : { "Fn::Sub" : [ "PublicSubnet-1-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
+                "RetentionInDays" : { "Ref" : "FlowLogRetention" }
+            }
+        },
+        "PublicSubnet1FlowLog" : {
+            "Type" : "AWS::EC2::FlowLog",
+            "Condition" : "CreatePublicFlowLogs",
+            "Properties" : {
+                "DeliverLogsPermissionArn" : { "Fn::GetAtt": [ "FlowLogRole", "Arn" ] },
+                "LogGroupName" : { "Ref" : "PublicSubnet1LogGroup" },
+                "ResourceId" : { "Ref" : "PublicSubnet1" },
+                "ResourceType" : "Subnet",
+                "TrafficType" : { "Ref" : "FlowLogTrafficType" }            
+            }
+        },
         "PublicSubnet2": {
             "Type": "AWS::EC2::Subnet",
             "Condition" : "CreatePublicSubnet",
@@ -322,6 +470,25 @@
                 }
             }
         },
+        "PublicSubnet2LogGroup" : {
+            "Type" : "AWS::Logs::LogGroup",
+            "Condition" : "CreatePublicFlowLogs",
+            "Properties" : {
+                "LogGroupName" : { "Fn::Sub" : [ "PublicSubnet-2-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
+                "RetentionInDays" : { "Ref" : "FlowLogRetention" }
+            }
+        },
+        "PublicSubnet2FlowLog" : {
+            "Type" : "AWS::EC2::FlowLog",
+            "Condition" : "CreatePublicFlowLogs",
+            "Properties" : {
+                "DeliverLogsPermissionArn" : { "Fn::GetAtt": [ "FlowLogRole", "Arn" ] },
+                "LogGroupName" : { "Ref" : "PublicSubnet2LogGroup" },
+                "ResourceId" : { "Ref" : "PublicSubnet2" },
+                "ResourceType" : "Subnet",
+                "TrafficType" : { "Ref" : "FlowLogTrafficType" }            
+            }
+        },
         "PublicSubnet3": {
             "Type": "AWS::EC2::Subnet",
             "Condition" : "CreatePublicSubnet",
@@ -373,6 +540,25 @@
                 "VpcId": {
                     "Ref": "VPC"
                 }
+            }
+        },
+        "PublicSubnet3LogGroup" : {
+            "Type" : "AWS::Logs::LogGroup",
+            "Condition" : "CreatePublicFlowLogs",
+            "Properties" : {
+                "LogGroupName" : { "Fn::Sub" : [ "PublicSubnet-3-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
+                "RetentionInDays" : { "Ref" : "FlowLogRetention" }
+            }
+        },
+        "PublicSubnet3FlowLog" : {
+            "Type" : "AWS::EC2::FlowLog",
+            "Condition" : "CreatePublicFlowLogs",
+            "Properties" : {
+                "DeliverLogsPermissionArn" : { "Fn::GetAtt": [ "FlowLogRole", "Arn" ] },
+                "LogGroupName" : { "Ref" : "PublicSubnet3LogGroup" },
+                "ResourceId" : { "Ref" : "PublicSubnet3" },
+                "ResourceType" : "Subnet",
+                "TrafficType" : { "Ref" : "FlowLogTrafficType" }            
             }
         },
         "PublicSubnetRouteTable": {
@@ -682,6 +868,25 @@
                 }
             }
         },
+        "PrivateSubnet1LogGroup" : {
+            "Type" : "AWS::Logs::LogGroup",
+            "Condition" : "CreatePrivateSubnet1FlowLog",
+            "Properties" : {
+                "LogGroupName" : { "Fn::Sub" : [ "PrivateSubnet-1-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
+                "RetentionInDays" : { "Ref" : "FlowLogRetention" }
+            }
+        },
+        "PrivateSubnet1FlowLog" : {
+            "Type" : "AWS::EC2::FlowLog",
+            "Condition" : "CreatePrivateSubnet1FlowLog",
+            "Properties" : {
+                "DeliverLogsPermissionArn" : { "Fn::GetAtt": [ "FlowLogRole", "Arn" ] },
+                "LogGroupName" : { "Ref" : "PrivateSubnet1LogGroup" },
+                "ResourceId" : { "Ref" : "PrivateSubnet1" },
+                "ResourceType" : "Subnet",
+                "TrafficType" : { "Ref" : "FlowLogTrafficType" }            
+            }
+        },
         "PrivateSubnet1RouteTableAssociation": {
             "Type": "AWS::EC2::SubnetRouteTableAssociation",
             "Condition" : "AttachSubnet1ToSinglePrivateRouteTable",
@@ -750,6 +955,25 @@
                 "VpcId": {
                     "Ref": "VPC"
                 }
+            }
+        },
+        "PrivateSubnet2LogGroup" : {
+            "Type" : "AWS::Logs::LogGroup",
+            "Condition" : "CreatePrivateSubnet2FlowLog",
+            "Properties" : {
+                "LogGroupName" : { "Fn::Sub" : [ "PrivateSubnet-2-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
+                "RetentionInDays" : { "Ref" : "FlowLogRetention" }
+            }
+        },
+        "PrivateSubnet2FlowLog" : {
+            "Type" : "AWS::EC2::FlowLog",
+            "Condition" : "CreatePrivateSubnet2FlowLog",
+            "Properties" : {
+                "DeliverLogsPermissionArn" : { "Fn::GetAtt": [ "FlowLogRole", "Arn" ] },
+                "LogGroupName" : { "Ref" : "PrivateSubnet2LogGroup" },
+                "ResourceId" : { "Ref" : "PrivateSubnet2" },
+                "ResourceType" : "Subnet",
+                "TrafficType" : { "Ref" : "FlowLogTrafficType" }            
             }
         },
         "PrivateSubnet2RouteTableAssociation": {
@@ -822,6 +1046,25 @@
                 }
             }
         },
+        "PrivateSubnet3LogGroup" : {
+            "Type" : "AWS::Logs::LogGroup",
+            "Condition" : "CreatePrivateSubnet3FlowLog",
+            "Properties" : {
+                "LogGroupName" : { "Fn::Sub" : [ "PrivateSubnet-3-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
+                "RetentionInDays" : { "Ref" : "FlowLogRetention" }
+            }
+        },
+        "PrivateSubnet3FlowLog" : {
+            "Type" : "AWS::EC2::FlowLog",
+            "Condition" : "CreatePrivateSubnet3FlowLog",
+            "Properties" : {
+                "DeliverLogsPermissionArn" : { "Fn::GetAtt": [ "FlowLogRole", "Arn" ] },
+                "LogGroupName" : { "Ref" : "PrivateSubnet3LogGroup" },
+                "ResourceId" : { "Ref" : "PrivateSubnet3" },
+                "ResourceType" : "Subnet",
+                "TrafficType" : { "Ref" : "FlowLogTrafficType" }            
+            }
+        },
         "PrivateSubnet3RouteTableAssociation": {
             "Type": "AWS::EC2::SubnetRouteTableAssociation",
             "Condition" : "AttachSubnet3ToSinglePrivateRouteTable",
@@ -890,6 +1133,25 @@
                 "VpcId": {
                     "Ref": "VPC"
                 }
+            }
+        },
+        "PrivateSubnet4LogGroup" : {
+            "Type" : "AWS::Logs::LogGroup",
+            "Condition" : "CreatePrivateSubnet4FlowLog",
+            "Properties" : {
+                "LogGroupName" : { "Fn::Sub" : [ "PrivateSubnet-4-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
+                "RetentionInDays" : { "Ref" : "FlowLogRetention" }
+            }
+        },
+        "PrivateSubnet4FlowLog" : {
+            "Type" : "AWS::EC2::FlowLog",
+            "Condition" : "CreatePrivateSubnet4FlowLog",
+            "Properties" : {
+                "DeliverLogsPermissionArn" : { "Fn::GetAtt": [ "FlowLogRole", "Arn" ] },
+                "LogGroupName" : { "Ref" : "PrivateSubnet4LogGroup" },
+                "ResourceId" : { "Ref" : "PrivateSubnet4" },
+                "ResourceType" : "Subnet",
+                "TrafficType" : { "Ref" : "FlowLogTrafficType" }            
             }
         },
         "PrivateSubnet4RouteTableAssociation": {
@@ -962,6 +1224,25 @@
                 }
             }
         },
+        "PrivateSubnet5LogGroup" : {
+            "Type" : "AWS::Logs::LogGroup",
+            "Condition" : "CreatePrivateSubnet5FlowLog",
+            "Properties" : {
+                "LogGroupName" : { "Fn::Sub" : [ "PrivateSubnet-5-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
+                "RetentionInDays" : { "Ref" : "FlowLogRetention" }
+            }
+        },
+        "PrivateSubnet5FlowLog" : {
+            "Type" : "AWS::EC2::FlowLog",
+            "Condition" : "CreatePrivateSubnet5FlowLog",
+            "Properties" : {
+                "DeliverLogsPermissionArn" : { "Fn::GetAtt": [ "FlowLogRole", "Arn" ] },
+                "LogGroupName" : { "Ref" : "PrivateSubnet5LogGroup" },
+                "ResourceId" : { "Ref" : "PrivateSubnet5" },
+                "ResourceType" : "Subnet",
+                "TrafficType" : { "Ref" : "FlowLogTrafficType" }            
+            }
+        },
         "PrivateSubnet5RouteTableAssociation": {
             "Type": "AWS::EC2::SubnetRouteTableAssociation",
             "Condition" : "AttachSubnet5ToSinglePrivateRouteTable",
@@ -1030,6 +1311,25 @@
                 "VpcId": {
                     "Ref": "VPC"
                 }
+            }
+        },
+        "PrivateSubnet6LogGroup" : {
+            "Type" : "AWS::Logs::LogGroup",
+            "Condition" : "CreatePrivateSubnet6FlowLog",
+            "Properties" : {
+                "LogGroupName" : { "Fn::Sub" : [ "PrivateSubnet-6-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
+                "RetentionInDays" : { "Ref" : "FlowLogRetention" }
+            }
+        },
+        "PrivateSubnet6FlowLog" : {
+            "Type" : "AWS::EC2::FlowLog",
+            "Condition" : "CreatePrivateSubnet6FlowLog",
+            "Properties" : {
+                "DeliverLogsPermissionArn" : { "Fn::GetAtt": [ "FlowLogRole", "Arn" ] },
+                "LogGroupName" : { "Ref" : "PrivateSubnet6LogGroup" },
+                "ResourceId" : { "Ref" : "PrivateSubnet6" },
+                "ResourceType" : "Subnet",
+                "TrafficType" : { "Ref" : "FlowLogTrafficType" }            
             }
         },
         "PrivateSubnet6RouteTableAssociation": {
