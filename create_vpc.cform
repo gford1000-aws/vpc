@@ -35,6 +35,12 @@
             "Type" : "String",
             "AllowedValues" : ["default", "dedicated"]
         },
+        "MultipleNATGateways" : {
+            "Default" : "false",
+            "Description" : "Whether a NAT Gateway should be created in each public subnet, with multiple private Route Tables",
+            "Type" : "String",
+            "AllowedValues" : ["true", "false"]
+        },
         "PrivateSubnetCount" : {
             "Default" : "1",
             "Description" : "Number of private subnets to create in the VPC",
@@ -61,7 +67,9 @@
         "4SubnetsRequested" : { "Fn::Equals" : [ { "Ref" : "PrivateSubnetCount" }, "4" ] },
         "5SubnetsRequested" : { "Fn::Equals" : [ { "Ref" : "PrivateSubnetCount" }, "5" ] },
         "6SubnetsRequested" : { "Fn::Equals" : [ { "Ref" : "PrivateSubnetCount" }, "6" ] },
-        "CreatePublicSubnetAndGateway" : { "Fn::Equals" : [ { "Ref" : "CreatePublicSubnet" }, "true" ] },
+        "CreateSingleNATGateway" : { "Fn::Equals" : [ { "Ref" : "MultipleNATGateways" }, "false" ] },
+        "CreateMultipleNATGateways" : { "Fn::Equals" : [ { "Ref" : "MultipleNATGateways" }, "true" ] },
+        "CreatePublicSubnet" : { "Fn::Equals" : [ { "Ref" : "CreatePublicSubnet" }, "true" ] },
         "CreateSubnet1" : { "Fn::Or" : [ 
             { "Condition" : "1SubnetRequested" },
             { "Condition" : "2SubnetsRequested" },
@@ -104,9 +112,63 @@
             { "Condition" : "CreateSubnet5" },
             { "Condition" : "CreateSubnet6" }
         ] },
-        "CreateBothPublicAndPrivate" : { "Fn::And" : [
-            { "Condition" : "CreatePublicSubnetAndGateway" },
-            { "Condition" : "CreatePrivateSubnet" }
+        "CreatePublicSubnetAndSingleGateway" : { "Fn::And" : [
+            { "Condition" : "CreatePublicSubnet" },
+            { "Condition" : "CreatePrivateSubnet" },
+            { "Condition" : "CreateSingleNATGateway" }
+        ] },
+        "CreatePublicSubnetAndMultipleGateways" : { "Fn::And" : [
+            { "Condition" : "CreatePublicSubnet" },
+            { "Condition" : "CreatePrivateSubnet" },
+            { "Condition" : "CreateMultipleNATGateways" }
+        ] },
+        "AttachSubnet1ToSinglePrivateRouteTable" : { "Fn::And" : [
+            { "Condition" : "CreateSubnet1" },
+            { "Condition" : "CreateSingleNATGateway" }
+        ] },
+        "AttachSubnet1ToRouteTable1" : { "Fn::And" : [
+            { "Condition" : "CreateSubnet1" },
+            { "Condition" : "CreateMultipleNATGateways" }
+        ] },
+        "AttachSubnet2ToSinglePrivateRouteTable" : { "Fn::And" : [
+            { "Condition" : "CreateSubnet2" },
+            { "Condition" : "CreateSingleNATGateway" }
+        ] },
+        "AttachSubnet2ToRouteTable2" : { "Fn::And" : [
+            { "Condition" : "CreateSubnet2" },
+            { "Condition" : "CreateMultipleNATGateways" }
+        ] },
+        "AttachSubnet3ToSinglePrivateRouteTable" : { "Fn::And" : [
+            { "Condition" : "CreateSubnet3" },
+            { "Condition" : "CreateSingleNATGateway" }
+        ] },
+        "AttachSubnet3ToRouteTable3" : { "Fn::And" : [
+            { "Condition" : "CreateSubnet3" },
+            { "Condition" : "CreateMultipleNATGateways" }
+        ] },
+        "AttachSubnet4ToSinglePrivateRouteTable" : { "Fn::And" : [
+            { "Condition" : "CreateSubnet4" },
+            { "Condition" : "CreateSingleNATGateway" }
+        ] },
+        "AttachSubnet4ToRouteTable1" : { "Fn::And" : [
+            { "Condition" : "CreateSubnet4" },
+            { "Condition" : "CreateMultipleNATGateways" }
+        ] },
+        "AttachSubnet5ToSinglePrivateRouteTable" : { "Fn::And" : [
+            { "Condition" : "CreateSubnet5" },
+            { "Condition" : "CreateSingleNATGateway" }
+        ] },
+        "AttachSubnet5ToRouteTable2" : { "Fn::And" : [
+            { "Condition" : "CreateSubnet5" },
+            { "Condition" : "CreateMultipleNATGateways" }
+        ] },
+        "AttachSubnet6ToSinglePrivateRouteTable" : { "Fn::And" : [
+            { "Condition" : "CreateSubnet6" },
+            { "Condition" : "CreateSingleNATGateway" }
+        ] },
+        "AttachSubnet6ToRouteTable3" : { "Fn::And" : [
+            { "Condition" : "CreateSubnet6" },
+            { "Condition" : "CreateMultipleNATGateways" }
         ] }
     },
 	"Resources" : {
@@ -144,11 +206,11 @@
         },
         "InternetGateway" : {
             "Type": "AWS::EC2::InternetGateway",
-            "Condition" : "CreatePublicSubnetAndGateway"
+            "Condition" : "CreatePublicSubnet"
         },
         "AttachInternetGatewayToVPC" : {
             "Type": "AWS::EC2::VPCGatewayAttachment",
-            "Condition" : "CreatePublicSubnetAndGateway",
+            "Condition" : "CreatePublicSubnet",
             "Properties": {
                 "VpcId" : { "Ref" : "VPC" },
                 "InternetGatewayId" : { "Ref" : "InternetGateway" }
@@ -156,9 +218,22 @@
         },
         "PublicSubnet1": {
             "Type": "AWS::EC2::Subnet",
-            "Condition" : "CreatePublicSubnetAndGateway",
+            "Condition" : "CreatePublicSubnet",
             "Properties": {
-                "AvailabilityZone": { "Fn::Select" : [ "0", { "Fn::GetAZs" : { "Ref" : "AWS::Region" } } ] },
+                "AvailabilityZone": { 
+                    "Fn::Select" : [ "0", 
+                        {   "Fn::Split" : [ ",", 
+                                {   "Fn::Join" : [ ",",
+                                      [
+                                        { "Fn::Join" : [ ",", { "Fn::GetAZs" : { "Ref" : "AWS::Region" } } ] },
+                                        { "Fn::Join" : [ ",", { "Fn::GetAZs" : { "Ref" : "AWS::Region" } } ] }
+                                      ]
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
                 "CidrBlock": {
                     "Fn::Join" : [ "",
                         [
@@ -196,9 +271,22 @@
         },
         "PublicSubnet2": {
             "Type": "AWS::EC2::Subnet",
-            "Condition" : "CreatePublicSubnetAndGateway",
+            "Condition" : "CreatePublicSubnet",
             "Properties": {
-                "AvailabilityZone": { "Fn::Select" : [ "1", { "Fn::GetAZs" : { "Ref" : "AWS::Region" } } ] },
+                "AvailabilityZone": { 
+                    "Fn::Select" : [ "1", 
+                        {   "Fn::Split" : [ ",", 
+                                {   "Fn::Join" : [ ",",
+                                      [
+                                        { "Fn::Join" : [ ",", { "Fn::GetAZs" : { "Ref" : "AWS::Region" } } ] },
+                                        { "Fn::Join" : [ ",", { "Fn::GetAZs" : { "Ref" : "AWS::Region" } } ] }
+                                      ]
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
                 "CidrBlock": {
                     "Fn::Join" : [ "",
                         [
@@ -236,9 +324,22 @@
         },
         "PublicSubnet3": {
             "Type": "AWS::EC2::Subnet",
-            "Condition" : "CreatePublicSubnetAndGateway",
+            "Condition" : "CreatePublicSubnet",
             "Properties": {
-                "AvailabilityZone": { "Fn::Select" : [ "2", { "Fn::GetAZs" : { "Ref" : "AWS::Region" } } ] },
+                "AvailabilityZone": { 
+                    "Fn::Select" : [ "2", 
+                        {   "Fn::Split" : [ ",", 
+                                {   "Fn::Join" : [ ",",
+                                      [
+                                        { "Fn::Join" : [ ",", { "Fn::GetAZs" : { "Ref" : "AWS::Region" } } ] },
+                                        { "Fn::Join" : [ ",", { "Fn::GetAZs" : { "Ref" : "AWS::Region" } } ] }
+                                      ]
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
                 "CidrBlock": {
                     "Fn::Join" : [ "",
                         [
@@ -276,7 +377,7 @@
         },
         "PublicSubnetRouteTable": {
             "Type": "AWS::EC2::RouteTable",
-            "Condition" : "CreatePublicSubnetAndGateway",
+            "Condition" : "CreatePublicSubnet",
             "Properties": {
                 "Tags": [
                     {
@@ -307,7 +408,7 @@
         },
         "PublicSubnet1RouteTableAssociation": {
             "Type": "AWS::EC2::SubnetRouteTableAssociation",
-            "Condition" : "CreatePublicSubnetAndGateway",
+            "Condition" : "CreatePublicSubnet",
             "Properties": {
                 "RouteTableId": { "Ref": "PublicSubnetRouteTable" },
                 "SubnetId": { "Ref": "PublicSubnet1" }
@@ -315,7 +416,7 @@
         },
         "PublicSubnet2RouteTableAssociation": {
             "Type": "AWS::EC2::SubnetRouteTableAssociation",
-            "Condition" : "CreatePublicSubnetAndGateway",
+            "Condition" : "CreatePublicSubnet",
             "Properties": {
                 "RouteTableId": { "Ref": "PublicSubnetRouteTable" },
                 "SubnetId": { "Ref": "PublicSubnet2" }
@@ -323,7 +424,7 @@
         },
         "PublicSubnet3RouteTableAssociation": {
             "Type": "AWS::EC2::SubnetRouteTableAssociation",
-            "Condition" : "CreatePublicSubnetAndGateway",
+            "Condition" : "CreatePublicSubnet",
             "Properties": {
                 "RouteTableId": { "Ref": "PublicSubnetRouteTable" },
                 "SubnetId": { "Ref": "PublicSubnet3" }
@@ -331,7 +432,7 @@
         },
         "PublicSubnetRouteToInternet" : {
             "Type": "AWS::EC2::Route",
-            "Condition" : "CreatePublicSubnetAndGateway",
+            "Condition" : "CreatePublicSubnet",
             "Properties" : {
                 "RouteTableId" : { "Ref" : "PublicSubnetRouteTable" },
                 "DestinationCidrBlock" : "0.0.0.0/0",
@@ -340,17 +441,62 @@
         },
         "NATEIP" : {
             "Type" : "AWS::EC2::EIP",
-            "Condition" : "CreateBothPublicAndPrivate",
+            "Condition" : "CreatePublicSubnetAndSingleGateway",
+            "Properties" : {
+                "Domain" : "vpc"
+            }
+        },
+        "NATEIP1" : {
+            "Type" : "AWS::EC2::EIP",
+            "Condition" : "CreatePublicSubnetAndMultipleGateways",
+            "Properties" : {
+                "Domain" : "vpc"
+            }
+        },
+        "NATEIP2" : {
+            "Type" : "AWS::EC2::EIP",
+            "Condition" : "CreatePublicSubnetAndMultipleGateways",
+            "Properties" : {
+                "Domain" : "vpc"
+            }
+        },
+        "NATEIP3" : {
+            "Type" : "AWS::EC2::EIP",
+            "Condition" : "CreatePublicSubnetAndMultipleGateways",
             "Properties" : {
                 "Domain" : "vpc"
             }
         },
         "NAT" : {
             "Type" : "AWS::EC2::NatGateway",
-            "Condition" : "CreateBothPublicAndPrivate",
+            "Condition" : "CreatePublicSubnetAndSingleGateway",
             "Properties" : {
                 "AllocationId" : { "Fn::GetAtt" : [ "NATEIP", "AllocationId" ] },
                 "SubnetId" : { "Ref": "PublicSubnet1" }
+            }
+        },
+        "NAT1" : {
+            "Type" : "AWS::EC2::NatGateway",
+            "Condition" : "CreatePublicSubnetAndMultipleGateways",
+            "Properties" : {
+                "AllocationId" : { "Fn::GetAtt" : [ "NATEIP1", "AllocationId" ] },
+                "SubnetId" : { "Ref": "PublicSubnet1" }
+            }
+        },
+        "NAT2" : {
+            "Type" : "AWS::EC2::NatGateway",
+            "Condition" : "CreatePublicSubnetAndMultipleGateways",
+            "Properties" : {
+                "AllocationId" : { "Fn::GetAtt" : [ "NATEIP2", "AllocationId" ] },
+                "SubnetId" : { "Ref": "PublicSubnet2" }
+            }
+        },
+        "NAT3" : {
+            "Type" : "AWS::EC2::NatGateway",
+            "Condition" : "CreatePublicSubnetAndMultipleGateways",
+            "Properties" : {
+                "AllocationId" : { "Fn::GetAtt" : [ "NATEIP3", "AllocationId" ] },
+                "SubnetId" : { "Ref": "PublicSubnet3" }
             }
         },
         "PrivateSubnetRouteTable": {
@@ -384,13 +530,102 @@
                 }
             }
         },
+        "PrivateSubnetRouteTable2": {
+            "Type": "AWS::EC2::RouteTable",
+            "Condition" : "CreatePublicSubnetAndMultipleGateways",
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub" : [ 
+                                "${Name}-Private-2", {
+                                    "Name" : {
+                                        "Fn::If" : [
+                                            "VPCNameNotProvided",
+                                            { "Ref": "AWS::StackName" },
+                                            { "Ref" : "VPCName" }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "Key": "Subnet Type",
+                        "Value": "Private Subnet"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "PrivateSubnetRouteTable3": {
+            "Type": "AWS::EC2::RouteTable",
+            "Condition" : "CreatePublicSubnetAndMultipleGateways",
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub" : [ 
+                                "${Name}-Private-3", {
+                                    "Name" : {
+                                        "Fn::If" : [
+                                            "VPCNameNotProvided",
+                                            { "Ref": "AWS::StackName" },
+                                            { "Ref" : "VPCName" }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "Key": "Subnet Type",
+                        "Value": "Private Subnet"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
         "PrivateSubnetRouteToInternet" : {
             "Type": "AWS::EC2::Route",
-            "Condition" : "CreateBothPublicAndPrivate",
+            "Condition" : "CreatePublicSubnetAndSingleGateway",
             "Properties" : {
                 "RouteTableId" : { "Ref" : "PrivateSubnetRouteTable" },
                 "DestinationCidrBlock" : "0.0.0.0/0",
                 "NatGatewayId" : { "Ref" : "NAT" }
+            }
+        },
+        "PrivateSubnetRouteToInternet1" : {
+            "Type": "AWS::EC2::Route",
+            "Condition" : "CreatePublicSubnetAndMultipleGateways",
+            "Properties" : {
+                "RouteTableId" : { "Ref" : "PrivateSubnetRouteTable" },
+                "DestinationCidrBlock" : "0.0.0.0/0",
+                "NatGatewayId" : { "Ref" : "NAT1" }
+            }
+        },
+        "PrivateSubnetRouteToInternet2" : {
+            "Type": "AWS::EC2::Route",
+            "Condition" : "CreatePublicSubnetAndMultipleGateways",
+            "Properties" : {
+                "RouteTableId" : { "Ref" : "PrivateSubnetRouteTable2" },
+                "DestinationCidrBlock" : "0.0.0.0/0",
+                "NatGatewayId" : { "Ref" : "NAT2" }
+            }
+        },
+        "PrivateSubnetRouteToInternet3" : {
+            "Type": "AWS::EC2::Route",
+            "Condition" : "CreatePublicSubnetAndMultipleGateways",
+            "Properties" : {
+                "RouteTableId" : { "Ref" : "PrivateSubnetRouteTable3" },
+                "DestinationCidrBlock" : "0.0.0.0/0",
+                "NatGatewayId" : { "Ref" : "NAT3" }
             }
         },
         "PrivateSubnet1": {
@@ -449,7 +684,15 @@
         },
         "PrivateSubnet1RouteTableAssociation": {
             "Type": "AWS::EC2::SubnetRouteTableAssociation",
-            "Condition" : "CreateSubnet1",
+            "Condition" : "AttachSubnet1ToSinglePrivateRouteTable",
+            "Properties": {
+                "RouteTableId": { "Ref": "PrivateSubnetRouteTable" },
+                "SubnetId": { "Ref": "PrivateSubnet1" }
+            }
+        },
+        "PrivateSubnet1RouteTableAssociationMultiRouteTables": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Condition" : "AttachSubnet1ToRouteTable1",
             "Properties": {
                 "RouteTableId": { "Ref": "PrivateSubnetRouteTable" },
                 "SubnetId": { "Ref": "PrivateSubnet1" }
@@ -511,9 +754,17 @@
         },
         "PrivateSubnet2RouteTableAssociation": {
             "Type": "AWS::EC2::SubnetRouteTableAssociation",
-            "Condition" : "CreateSubnet2",
+            "Condition" : "AttachSubnet2ToSinglePrivateRouteTable",
             "Properties": {
                 "RouteTableId": { "Ref": "PrivateSubnetRouteTable" },
+                "SubnetId": { "Ref": "PrivateSubnet2" }
+            }
+        },
+        "PrivateSubnet2RouteTableAssociationMultiRouteTables": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Condition" : "AttachSubnet2ToRouteTable2",
+            "Properties": {
+                "RouteTableId": { "Ref": "PrivateSubnetRouteTable2" },
                 "SubnetId": { "Ref": "PrivateSubnet2" }
             }
         },
@@ -573,9 +824,17 @@
         },
         "PrivateSubnet3RouteTableAssociation": {
             "Type": "AWS::EC2::SubnetRouteTableAssociation",
-            "Condition" : "CreateSubnet3",
+            "Condition" : "AttachSubnet3ToSinglePrivateRouteTable",
             "Properties": {
                 "RouteTableId": { "Ref": "PrivateSubnetRouteTable" },
+                "SubnetId": { "Ref": "PrivateSubnet3" }
+            }
+        },
+        "PrivateSubnet3RouteTableAssociationMultiRouteTables": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Condition" : "AttachSubnet3ToRouteTable3",
+            "Properties": {
+                "RouteTableId": { "Ref": "PrivateSubnetRouteTable3" },
                 "SubnetId": { "Ref": "PrivateSubnet3" }
             }
         },
@@ -635,7 +894,15 @@
         },
         "PrivateSubnet4RouteTableAssociation": {
             "Type": "AWS::EC2::SubnetRouteTableAssociation",
-            "Condition" : "CreateSubnet4",
+            "Condition" : "AttachSubnet4ToSinglePrivateRouteTable",
+            "Properties": {
+                "RouteTableId": { "Ref": "PrivateSubnetRouteTable" },
+                "SubnetId": { "Ref": "PrivateSubnet4" }
+            }
+        },
+        "PrivateSubnet4RouteTableAssociationMultiRouteTables": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Condition" : "AttachSubnet4ToRouteTable1",
             "Properties": {
                 "RouteTableId": { "Ref": "PrivateSubnetRouteTable" },
                 "SubnetId": { "Ref": "PrivateSubnet4" }
@@ -697,9 +964,17 @@
         },
         "PrivateSubnet5RouteTableAssociation": {
             "Type": "AWS::EC2::SubnetRouteTableAssociation",
-            "Condition" : "CreateSubnet5",
+            "Condition" : "AttachSubnet5ToSinglePrivateRouteTable",
             "Properties": {
                 "RouteTableId": { "Ref": "PrivateSubnetRouteTable" },
+                "SubnetId": { "Ref": "PrivateSubnet5" }
+            }
+        },
+        "PrivateSubnet5RouteTableAssociationMultiRouteTables": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Condition" : "AttachSubnet5ToRouteTable2",
+            "Properties": {
+                "RouteTableId": { "Ref": "PrivateSubnetRouteTable2" },
                 "SubnetId": { "Ref": "PrivateSubnet5" }
             }
         },
@@ -759,9 +1034,17 @@
         },
         "PrivateSubnet6RouteTableAssociation": {
             "Type": "AWS::EC2::SubnetRouteTableAssociation",
-            "Condition" : "CreateSubnet6",
+            "Condition" : "AttachSubnet6ToSinglePrivateRouteTable",
             "Properties": {
                 "RouteTableId": { "Ref": "PrivateSubnetRouteTable" },
+                "SubnetId": { "Ref": "PrivateSubnet6" }
+            }
+        },
+        "PrivateSubnet6RouteTableAssociationMultiRouteTables": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Condition" : "AttachSubnet6ToRouteTable3",
+            "Properties": {
+                "RouteTableId": { "Ref": "PrivateSubnetRouteTable3" },
                 "SubnetId": { "Ref": "PrivateSubnet6" }
             }
         }
@@ -771,7 +1054,7 @@
             "Description" : "The public subnets in the VPC",
             "Value" : {
                 "Fn::If" : [
-                    "CreatePublicSubnetAndGateway",
+                    "CreatePublicSubnet",
                     { "Fn::Join" : [ ",",
                             [
                                 { "Ref" : "PublicSubnet1" },
@@ -788,7 +1071,7 @@
             "Description" : "The route table of the public subnet in the VPC",
             "Value" : {
                 "Fn::If" : [
-                    "CreatePublicSubnetAndGateway",
+                    "CreatePublicSubnet",
                     { "Ref" : "PublicSubnetRouteTable" },
                     ""
                 ]
@@ -808,14 +1091,28 @@
                     ] 
                 ]
             }
-        },
+        },        
         "PrivateSubnetRouteTable" : {
             "Description" : "The route table of the private subnets in the VPC",
             "Value" : {
                 "Fn::If" : [
-                    "CreatePrivateSubnet",
-                    { "Ref" : "PrivateSubnetRouteTable" },
-                    ""
+                    "CreatePublicSubnetAndMultipleGateways",
+                    {
+                        "Fn::Join" : [ ",",
+                            [
+                                { "Ref" : "PrivateSubnetRouteTable" },
+                                { "Ref" : "PrivateSubnetRouteTable2" },
+                                { "Ref" : "PrivateSubnetRouteTable3" }
+                            ]
+                        ]
+                    },
+                    {
+                        "Fn::If" : [
+                            "CreatePrivateSubnet",
+                            { "Ref" : "PrivateSubnetRouteTable" },
+                            ""
+                        ]
+                    }
                 ]
             }
         },
