@@ -41,6 +41,12 @@
             "Type" : "String",
             "AllowedValues" : ["ALL", "VPC", "VPC+PublicSubnet", "VPC+PrivateSubnet" ]
         },
+        "FlowLogDeletionPolicy" : {
+            "Description" : "If using FlowLogs, whether FlowLogs should be deleted (true) when the stack is deleted",
+            "Default" : "false",
+            "Type" : "String",
+            "AllowedValues" : ["false", "true" ]
+        },
         "FlowLogRetention" : {
             "Description" : "If using FlowLogs, the number of days to retain logs",
             "Default" : "30",
@@ -241,6 +247,86 @@
         "AttachSubnet6ToRouteTable3" : { "Fn::And" : [
             { "Condition" : "CreateSubnet6" },
             { "Condition" : "CreateMultipleNATGateways" }
+        ] },
+        "DeleteFlowLogs" : { "Fn::Equals" : [ { "Ref" : "FlowLogDeletionPolicy" }, "true" ] },
+        "RetainFlowLogs" : { "Fn::Equals" : [ { "Ref" : "FlowLogDeletionPolicy" }, "false" ] },
+        "CreateDeletableVPCFlowLogs" : { "Fn::And" : [
+            { "Condition" : "CreateFlowLogs" },
+            { "Condition" : "DeleteFlowLogs" }
+        ] },
+        "CreateRetainedVPCFlowLogs" : { "Fn::And" : [
+            { "Condition" : "CreateFlowLogs" },
+            { "Condition" : "RetainFlowLogs" }
+        ] },
+        "CreateDeletablePublicSubnetFlowLogs" : { "Fn::And" : [
+            { "Condition" : "CreateFlowLogs" },
+            { "Condition" : "DeleteFlowLogs" },
+            { "Condition" : "CreatePublicSubnet" }
+        ] },
+        "CreateRetainedPublicSubnetFlowLogs" : { "Fn::And" : [
+            { "Condition" : "CreateFlowLogs" },
+            { "Condition" : "RetainFlowLogs" },
+            { "Condition" : "CreatePublicSubnet" }
+        ] },
+        "CreateDeletablePrivateSubnet1FlowLogs" : { "Fn::And" : [
+            { "Condition" : "CreateFlowLogs" },
+            { "Condition" : "DeleteFlowLogs" },
+            { "Condition" : "CreateSubnet1" }
+        ] },
+        "CreateRetainedPrivateSubnet1FlowLogs" : { "Fn::And" : [
+            { "Condition" : "CreateFlowLogs" },
+            { "Condition" : "RetainFlowLogs" },
+            { "Condition" : "CreateSubnet1" }
+        ] },
+        "CreateDeletablePrivateSubnet2FlowLogs" : { "Fn::And" : [
+            { "Condition" : "CreateFlowLogs" },
+            { "Condition" : "DeleteFlowLogs" },
+            { "Condition" : "CreateSubnet2" }
+        ] },
+        "CreateRetainedPrivateSubnet2FlowLogs" : { "Fn::And" : [
+            { "Condition" : "CreateFlowLogs" },
+            { "Condition" : "RetainFlowLogs" },
+            { "Condition" : "CreateSubnet2" }
+        ] },
+        "CreateDeletablePrivateSubnet3FlowLogs" : { "Fn::And" : [
+            { "Condition" : "CreateFlowLogs" },
+            { "Condition" : "DeleteFlowLogs" },
+            { "Condition" : "CreateSubnet3" }
+        ] },
+        "CreateRetainedPrivateSubnet3FlowLogs" : { "Fn::And" : [
+            { "Condition" : "CreateFlowLogs" },
+            { "Condition" : "RetainFlowLogs" },
+            { "Condition" : "CreateSubnet3" }
+        ] },
+        "CreateDeletablePrivateSubnet4FlowLogs" : { "Fn::And" : [
+            { "Condition" : "CreateFlowLogs" },
+            { "Condition" : "DeleteFlowLogs" },
+            { "Condition" : "CreateSubnet4" }
+        ] },
+        "CreateRetainedPrivateSubnet4FlowLogs" : { "Fn::And" : [
+            { "Condition" : "CreateFlowLogs" },
+            { "Condition" : "RetainFlowLogs" },
+            { "Condition" : "CreateSubnet4" }
+        ] },
+        "CreateDeletablePrivateSubnet5FlowLogs" : { "Fn::And" : [
+            { "Condition" : "CreateFlowLogs" },
+            { "Condition" : "DeleteFlowLogs" },
+            { "Condition" : "CreateSubnet5" }
+        ] },
+        "CreateRetainedPrivateSubnet5FlowLogs" : { "Fn::And" : [
+            { "Condition" : "CreateFlowLogs" },
+            { "Condition" : "RetainFlowLogs" },
+            { "Condition" : "CreateSubnet5" }
+        ] },
+        "CreateDeletablePrivateSubnet6FlowLogs" : { "Fn::And" : [
+            { "Condition" : "CreateFlowLogs" },
+            { "Condition" : "DeleteFlowLogs" },
+            { "Condition" : "CreateSubnet6" }
+        ] },
+        "CreateRetainedPrivateSubnet6FlowLogs" : { "Fn::And" : [
+            { "Condition" : "CreateFlowLogs" },
+            { "Condition" : "RetainFlowLogs" },
+            { "Condition" : "CreateSubnet6" }
         ] }
     },
 	"Resources" : {
@@ -314,9 +400,19 @@
                 ]
             }
         },
-        "VPCLogGroup" : {
+        "VPCLogGroupWithNoDelete" : {
             "Type" : "AWS::Logs::LogGroup",
-            "Condition" : "CreateFlowLogs",
+            "Condition" : "CreateRetainedVPCFlowLogs",
+            "DeletionPolicy" : "Retain",
+            "Properties" : {
+                "LogGroupName" : { "Fn::Sub" : [ "VPC-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
+                "RetentionInDays" : { "Ref" : "FlowLogRetention" }
+            }
+        },
+        "VPCLogGroupWithDelete" : {
+            "Type" : "AWS::Logs::LogGroup",
+            "Condition" : "CreateDeletableVPCFlowLogs",
+            "DeletionPolicy" : "Delete",
             "Properties" : {
                 "LogGroupName" : { "Fn::Sub" : [ "VPC-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
                 "RetentionInDays" : { "Ref" : "FlowLogRetention" }
@@ -327,7 +423,7 @@
             "Condition" : "CreateFlowLogs",
             "Properties" : {
                 "DeliverLogsPermissionArn" : { "Fn::GetAtt": [ "FlowLogRole", "Arn" ] },
-                "LogGroupName" : { "Ref" : "VPCLogGroup" },
+                "LogGroupName" : { "Fn::If" : [ "CreateDeletableVPCFlowLogs", { "Ref" : "VPCLogGroupWithDelete" }, { "Ref" : "VPCLogGroupWithNoDelete" } ] },
                 "ResourceId" : { "Ref" : "VPC" },
                 "ResourceType" : "VPC",
                 "TrafficType" : { "Ref" : "FlowLogTrafficType" }            
@@ -398,9 +494,19 @@
                 }
             }
         },
-        "PublicSubnet1LogGroup" : {
+        "PublicSubnet1LogGroupWithDelete" : {
             "Type" : "AWS::Logs::LogGroup",
-            "Condition" : "CreatePublicFlowLogs",
+            "Condition" : "CreateDeletablePublicSubnetFlowLogs",
+            "DeletionPolicy" : "Delete",
+            "Properties" : {
+                "LogGroupName" : { "Fn::Sub" : [ "PublicSubnet-1-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
+                "RetentionInDays" : { "Ref" : "FlowLogRetention" }
+            }
+        },
+        "PublicSubnet1LogGroupWithNoDelete" : {
+            "Type" : "AWS::Logs::LogGroup",
+            "Condition" : "CreateRetainedPublicSubnetFlowLogs",
+            "DeletionPolicy" : "Retain",
             "Properties" : {
                 "LogGroupName" : { "Fn::Sub" : [ "PublicSubnet-1-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
                 "RetentionInDays" : { "Ref" : "FlowLogRetention" }
@@ -411,7 +517,7 @@
             "Condition" : "CreatePublicFlowLogs",
             "Properties" : {
                 "DeliverLogsPermissionArn" : { "Fn::GetAtt": [ "FlowLogRole", "Arn" ] },
-                "LogGroupName" : { "Ref" : "PublicSubnet1LogGroup" },
+                "LogGroupName" : { "Fn::If" : [ "CreateDeletablePublicSubnetFlowLogs", { "Ref" : "PublicSubnet1LogGroupWithDelete" }, { "Ref" : "PublicSubnet1LogGroupWithNoDelete" } ] },
                 "ResourceId" : { "Ref" : "PublicSubnet1" },
                 "ResourceType" : "Subnet",
                 "TrafficType" : { "Ref" : "FlowLogTrafficType" }            
@@ -470,9 +576,19 @@
                 }
             }
         },
-        "PublicSubnet2LogGroup" : {
+        "PublicSubnet2LogGroupWithDelete" : {
             "Type" : "AWS::Logs::LogGroup",
-            "Condition" : "CreatePublicFlowLogs",
+            "Condition" : "CreateDeletablePublicSubnetFlowLogs",
+            "DeletionPolicy" : "Delete",
+            "Properties" : {
+                "LogGroupName" : { "Fn::Sub" : [ "PublicSubnet-2-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
+                "RetentionInDays" : { "Ref" : "FlowLogRetention" }
+            }
+        },
+        "PublicSubnet2LogGroupWithNoDelete" : {
+            "Type" : "AWS::Logs::LogGroup",
+            "Condition" : "CreateRetainedPublicSubnetFlowLogs",
+            "DeletionPolicy" : "Retain",
             "Properties" : {
                 "LogGroupName" : { "Fn::Sub" : [ "PublicSubnet-2-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
                 "RetentionInDays" : { "Ref" : "FlowLogRetention" }
@@ -483,7 +599,7 @@
             "Condition" : "CreatePublicFlowLogs",
             "Properties" : {
                 "DeliverLogsPermissionArn" : { "Fn::GetAtt": [ "FlowLogRole", "Arn" ] },
-                "LogGroupName" : { "Ref" : "PublicSubnet2LogGroup" },
+                "LogGroupName" : { "Fn::If" : [ "CreateDeletablePublicSubnetFlowLogs", { "Ref" : "PublicSubnet2LogGroupWithDelete" }, { "Ref" : "PublicSubnet2LogGroupWithNoDelete" } ] },
                 "ResourceId" : { "Ref" : "PublicSubnet2" },
                 "ResourceType" : "Subnet",
                 "TrafficType" : { "Ref" : "FlowLogTrafficType" }            
@@ -542,9 +658,19 @@
                 }
             }
         },
-        "PublicSubnet3LogGroup" : {
+        "PublicSubnet3LogGroupWithDelete" : {
             "Type" : "AWS::Logs::LogGroup",
-            "Condition" : "CreatePublicFlowLogs",
+            "Condition" : "CreateDeletablePublicSubnetFlowLogs",
+            "DeletionPolicy" : "Delete",
+            "Properties" : {
+                "LogGroupName" : { "Fn::Sub" : [ "PublicSubnet-3-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
+                "RetentionInDays" : { "Ref" : "FlowLogRetention" }
+            }
+        },
+        "PublicSubnet3LogGroupWithNoDelete" : {
+            "Type" : "AWS::Logs::LogGroup",
+            "Condition" : "CreateRetainedPublicSubnetFlowLogs",
+            "DeletionPolicy" : "Retain",
             "Properties" : {
                 "LogGroupName" : { "Fn::Sub" : [ "PublicSubnet-3-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
                 "RetentionInDays" : { "Ref" : "FlowLogRetention" }
@@ -555,7 +681,7 @@
             "Condition" : "CreatePublicFlowLogs",
             "Properties" : {
                 "DeliverLogsPermissionArn" : { "Fn::GetAtt": [ "FlowLogRole", "Arn" ] },
-                "LogGroupName" : { "Ref" : "PublicSubnet3LogGroup" },
+                "LogGroupName" : { "Fn::If" : [ "CreateDeletablePublicSubnetFlowLogs", { "Ref" : "PublicSubnet3LogGroupWithDelete" }, { "Ref" : "PublicSubnet3LogGroupWithNoDelete" } ] },
                 "ResourceId" : { "Ref" : "PublicSubnet3" },
                 "ResourceType" : "Subnet",
                 "TrafficType" : { "Ref" : "FlowLogTrafficType" }            
@@ -868,9 +994,19 @@
                 }
             }
         },
-        "PrivateSubnet1LogGroup" : {
+        "PrivateSubnet1LogGroupWithDelete" : {
             "Type" : "AWS::Logs::LogGroup",
-            "Condition" : "CreatePrivateSubnet1FlowLog",
+            "Condition" : "CreateDeletablePrivateSubnet1FlowLogs",
+            "DeletionPolicy" : "Delete",
+            "Properties" : {
+                "LogGroupName" : { "Fn::Sub" : [ "PrivateSubnet-1-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
+                "RetentionInDays" : { "Ref" : "FlowLogRetention" }
+            }
+        },
+        "PrivateSubnet1LogGroupWithNoDelete" : {
+            "Type" : "AWS::Logs::LogGroup",
+            "Condition" : "CreateRetainedPrivateSubnet1FlowLogs",
+            "DeletionPolicy" : "Retain",
             "Properties" : {
                 "LogGroupName" : { "Fn::Sub" : [ "PrivateSubnet-1-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
                 "RetentionInDays" : { "Ref" : "FlowLogRetention" }
@@ -881,7 +1017,7 @@
             "Condition" : "CreatePrivateSubnet1FlowLog",
             "Properties" : {
                 "DeliverLogsPermissionArn" : { "Fn::GetAtt": [ "FlowLogRole", "Arn" ] },
-                "LogGroupName" : { "Ref" : "PrivateSubnet1LogGroup" },
+                "LogGroupName" : { "Fn::If" : [ "CreateDeletablePrivateSubnet1FlowLogs", { "Ref" : "PrivateSubnet1LogGroupWithDelete" }, { "Ref" : "PrivateSubnet1LogGroupWithNoDelete" } ] },
                 "ResourceId" : { "Ref" : "PrivateSubnet1" },
                 "ResourceType" : "Subnet",
                 "TrafficType" : { "Ref" : "FlowLogTrafficType" }            
@@ -957,9 +1093,19 @@
                 }
             }
         },
-        "PrivateSubnet2LogGroup" : {
+        "PrivateSubnet2LogGroupWithDelete" : {
             "Type" : "AWS::Logs::LogGroup",
-            "Condition" : "CreatePrivateSubnet2FlowLog",
+            "Condition" : "CreateDeletablePrivateSubnet2FlowLogs",
+            "DeletionPolicy" : "Delete",
+            "Properties" : {
+                "LogGroupName" : { "Fn::Sub" : [ "PrivateSubnet-2-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
+                "RetentionInDays" : { "Ref" : "FlowLogRetention" }
+            }
+        },
+        "PrivateSubnet2LogGroupWithNoDelete" : {
+            "Type" : "AWS::Logs::LogGroup",
+            "Condition" : "CreateRetainedPrivateSubnet2FlowLogs",
+            "DeletionPolicy" : "Retain",
             "Properties" : {
                 "LogGroupName" : { "Fn::Sub" : [ "PrivateSubnet-2-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
                 "RetentionInDays" : { "Ref" : "FlowLogRetention" }
@@ -970,7 +1116,7 @@
             "Condition" : "CreatePrivateSubnet2FlowLog",
             "Properties" : {
                 "DeliverLogsPermissionArn" : { "Fn::GetAtt": [ "FlowLogRole", "Arn" ] },
-                "LogGroupName" : { "Ref" : "PrivateSubnet2LogGroup" },
+                "LogGroupName" : { "Fn::If" : [ "CreateDeletablePrivateSubnet2FlowLogs", { "Ref" : "PrivateSubnet2LogGroupWithDelete" }, { "Ref" : "PrivateSubnet2LogGroupWithNoDelete" } ] },
                 "ResourceId" : { "Ref" : "PrivateSubnet2" },
                 "ResourceType" : "Subnet",
                 "TrafficType" : { "Ref" : "FlowLogTrafficType" }            
@@ -1046,9 +1192,19 @@
                 }
             }
         },
-        "PrivateSubnet3LogGroup" : {
+        "PrivateSubnet3LogGroupWithDelete" : {
             "Type" : "AWS::Logs::LogGroup",
-            "Condition" : "CreatePrivateSubnet3FlowLog",
+            "Condition" : "CreateDeletablePrivateSubnet3FlowLogs",
+            "DeletionPolicy" : "Delete",
+            "Properties" : {
+                "LogGroupName" : { "Fn::Sub" : [ "PrivateSubnet-3-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
+                "RetentionInDays" : { "Ref" : "FlowLogRetention" }
+            }
+        },
+        "PrivateSubnet3LogGroupWithNoDelete" : {
+            "Type" : "AWS::Logs::LogGroup",
+            "Condition" : "CreateRetainedPrivateSubnet3FlowLogs",
+            "DeletionPolicy" : "Retain",
             "Properties" : {
                 "LogGroupName" : { "Fn::Sub" : [ "PrivateSubnet-3-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
                 "RetentionInDays" : { "Ref" : "FlowLogRetention" }
@@ -1059,7 +1215,7 @@
             "Condition" : "CreatePrivateSubnet3FlowLog",
             "Properties" : {
                 "DeliverLogsPermissionArn" : { "Fn::GetAtt": [ "FlowLogRole", "Arn" ] },
-                "LogGroupName" : { "Ref" : "PrivateSubnet3LogGroup" },
+                "LogGroupName" : { "Fn::If" : [ "CreateDeletablePrivateSubnet3FlowLogs", { "Ref" : "PrivateSubnet3LogGroupWithDelete" }, { "Ref" : "PrivateSubnet3LogGroupWithNoDelete" } ] },
                 "ResourceId" : { "Ref" : "PrivateSubnet3" },
                 "ResourceType" : "Subnet",
                 "TrafficType" : { "Ref" : "FlowLogTrafficType" }            
@@ -1135,9 +1291,19 @@
                 }
             }
         },
-        "PrivateSubnet4LogGroup" : {
+        "PrivateSubnet4LogGroupWithDelete" : {
             "Type" : "AWS::Logs::LogGroup",
-            "Condition" : "CreatePrivateSubnet4FlowLog",
+            "Condition" : "CreateDeletablePrivateSubnet4FlowLogs",
+            "DeletionPolicy" : "Delete",
+            "Properties" : {
+                "LogGroupName" : { "Fn::Sub" : [ "PrivateSubnet-4-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
+                "RetentionInDays" : { "Ref" : "FlowLogRetention" }
+            }
+        },
+        "PrivateSubnet4LogGroupWithNoDelete" : {
+            "Type" : "AWS::Logs::LogGroup",
+            "Condition" : "CreateRetainedPrivateSubnet4FlowLogs",
+            "DeletionPolicy" : "Retain",
             "Properties" : {
                 "LogGroupName" : { "Fn::Sub" : [ "PrivateSubnet-4-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
                 "RetentionInDays" : { "Ref" : "FlowLogRetention" }
@@ -1148,7 +1314,7 @@
             "Condition" : "CreatePrivateSubnet4FlowLog",
             "Properties" : {
                 "DeliverLogsPermissionArn" : { "Fn::GetAtt": [ "FlowLogRole", "Arn" ] },
-                "LogGroupName" : { "Ref" : "PrivateSubnet4LogGroup" },
+                "LogGroupName" : { "Fn::If" : [ "CreateDeletablePrivateSubnet4FlowLogs", { "Ref" : "PrivateSubnet4LogGroupWithDelete" }, { "Ref" : "PrivateSubnet4LogGroupWithNoDelete" } ] },
                 "ResourceId" : { "Ref" : "PrivateSubnet4" },
                 "ResourceType" : "Subnet",
                 "TrafficType" : { "Ref" : "FlowLogTrafficType" }            
@@ -1224,9 +1390,19 @@
                 }
             }
         },
-        "PrivateSubnet5LogGroup" : {
+        "PrivateSubnet5LogGroupWithDelete" : {
             "Type" : "AWS::Logs::LogGroup",
-            "Condition" : "CreatePrivateSubnet5FlowLog",
+            "Condition" : "CreateDeletablePrivateSubnet5FlowLogs",
+            "DeletionPolicy" : "Delete",
+            "Properties" : {
+                "LogGroupName" : { "Fn::Sub" : [ "PrivateSubnet-5-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
+                "RetentionInDays" : { "Ref" : "FlowLogRetention" }
+            }
+        },
+        "PrivateSubnet5LogGroupWithNoDelete" : {
+            "Type" : "AWS::Logs::LogGroup",
+            "Condition" : "CreateRetainedPrivateSubnet5FlowLogs",
+            "DeletionPolicy" : "Retain",
             "Properties" : {
                 "LogGroupName" : { "Fn::Sub" : [ "PrivateSubnet-5-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
                 "RetentionInDays" : { "Ref" : "FlowLogRetention" }
@@ -1237,7 +1413,7 @@
             "Condition" : "CreatePrivateSubnet5FlowLog",
             "Properties" : {
                 "DeliverLogsPermissionArn" : { "Fn::GetAtt": [ "FlowLogRole", "Arn" ] },
-                "LogGroupName" : { "Ref" : "PrivateSubnet5LogGroup" },
+                "LogGroupName" : { "Fn::If" : [ "CreateDeletablePrivateSubnet5FlowLogs", { "Ref" : "PrivateSubnet5LogGroupWithDelete" }, { "Ref" : "PrivateSubnet5LogGroupWithNoDelete" } ] },
                 "ResourceId" : { "Ref" : "PrivateSubnet5" },
                 "ResourceType" : "Subnet",
                 "TrafficType" : { "Ref" : "FlowLogTrafficType" }            
@@ -1313,9 +1489,19 @@
                 }
             }
         },
-        "PrivateSubnet6LogGroup" : {
+        "PrivateSubnet6LogGroupWithDelete" : {
             "Type" : "AWS::Logs::LogGroup",
-            "Condition" : "CreatePrivateSubnet6FlowLog",
+            "Condition" : "CreateDeletablePrivateSubnet6FlowLogs",
+            "DeletionPolicy" : "Delete",
+            "Properties" : {
+                "LogGroupName" : { "Fn::Sub" : [ "PrivateSubnet-6-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
+                "RetentionInDays" : { "Ref" : "FlowLogRetention" }
+            }
+        },
+        "PrivateSubnet6LogGroupWithNoDelete" : {
+            "Type" : "AWS::Logs::LogGroup",
+            "Condition" : "CreateRetainedPrivateSubnet6FlowLogs",
+            "DeletionPolicy" : "Retain",
             "Properties" : {
                 "LogGroupName" : { "Fn::Sub" : [ "PrivateSubnet-6-${Name}", { "Name" : { "Ref" : "AWS::StackName" } } ] },
                 "RetentionInDays" : { "Ref" : "FlowLogRetention" }
@@ -1326,7 +1512,7 @@
             "Condition" : "CreatePrivateSubnet6FlowLog",
             "Properties" : {
                 "DeliverLogsPermissionArn" : { "Fn::GetAtt": [ "FlowLogRole", "Arn" ] },
-                "LogGroupName" : { "Ref" : "PrivateSubnet6LogGroup" },
+                "LogGroupName" : { "Fn::If" : [ "CreateDeletablePrivateSubnet6FlowLogs", { "Ref" : "PrivateSubnet6LogGroupWithDelete" }, { "Ref" : "PrivateSubnet6LogGroupWithNoDelete" } ] },
                 "ResourceId" : { "Ref" : "PrivateSubnet6" },
                 "ResourceType" : "Subnet",
                 "TrafficType" : { "Ref" : "FlowLogTrafficType" }            
