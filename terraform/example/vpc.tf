@@ -1,5 +1,5 @@
 module "vpc" {
-        source = "github.com/gford1000-aws/vpc//terraform/module"
+        source = "github.com/gford1000-aws/terraform//aws/vpc"
 
         cidr_address = "10.0"
         private_subnet_count = 1
